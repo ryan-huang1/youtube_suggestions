@@ -1,6 +1,6 @@
 # YouTube Suggestions
 
-A simple Python package to get YouTube search suggestions.
+A simple Python package to get YouTube search suggestions with optional proxy support.
 
 ## Installation
 
@@ -17,17 +17,38 @@ Here's a quick example of how to use the package:
 ```python
 from youtube_suggestions import get_suggestions
 
+# Without proxy
 suggestions = get_suggestions("python programming")
 print(suggestions)
+
+# With proxy
+proxy = "gate.dc.smartproxy.com:1111:proxyname:password"
+suggestions_with_proxy = get_suggestions("python programming", proxy=proxy)
+print(suggestions_with_proxy)
 ```
 
-This will print a list of search suggestions for "python programming".
+This will print a list of search suggestions for "python programming", first without a proxy and then using the specified proxy.
 
 ## Features
 
 - Get YouTube search suggestions
+- Optional proxy support
 - Fallback method if the primary method fails
 - Easy to use
+
+## Proxy Format
+
+The proxy should be specified in the following format:
+
+```
+host:port:username:password
+```
+
+For example:
+
+```
+gate.dc.smartproxy.com:1111:proxyname:password
+```
 
 ## Requirements
 

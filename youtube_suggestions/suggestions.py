@@ -1,14 +1,27 @@
+# youtube_suggestions/suggestions.py
 import requests
 import json
 
-def get_suggestions(query):
+def get_suggestions(query, proxy=None):
     if not query:
         raise ValueError("Search query was not provided!")
+
+    # Parse proxy string if provided
+    proxies = None
+    if proxy:
+        parts = proxy.split(':')
+        if len(parts) != 4:
+            raise ValueError("Invalid proxy format. Expected format: host:port:username:password")
+        host, port, username, password = parts
+        proxies = {
+            'http': f'http://{username}:{password}@{host}:{port}',
+            'https': f'http://{username}:{password}@{host}:{port}'
+        }
 
     try:
         # Primary method
         url = f"https://suggestqueries-clients6.youtube.com/complete/search?client=youtube&gs_ri=youtube&ds=yt&q={requests.utils.quote(query)}"
-        response = requests.get(url)
+        response = requests.get(url, proxies=proxies)
         content = response.text
         
         # Extract JSON data
@@ -22,7 +35,7 @@ def get_suggestions(query):
         try:
             # Fallback method
             url = f"https://clients1.google.com/complete/search?client=youtube&gs_ri=youtube&ds=yt&q={requests.utils.quote(query)}"
-            response = requests.get(url)
+            response = requests.get(url, proxies=proxies)
             content = response.text
             
             search_suggestions = []
