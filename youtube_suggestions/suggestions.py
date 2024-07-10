@@ -2,6 +2,44 @@ import requests
 import json
 import time
 import random
+import concurrent.futures
+
+def fetch_suggestions(url, proxies, headers):
+    try:
+        response = requests.get(url, proxies=proxies, headers=headers)
+        content = response.text
+        return content
+    except Exception as e:
+        print(f"Request to {url} failed: {e}")
+        return None
+
+def parse_primary_response(content):
+    try:
+        start = content.index('window.google.ac.h(') + len('window.google.ac.h(')
+        end = content.rindex(')')
+        data = json.loads(content[start:end])
+        return [suggestion[0] for suggestion in data[1]]
+    except Exception as e:
+        print(f"Parsing primary response failed: {e}")
+        return []
+
+def parse_fallback_response(content):
+    try:
+        search_suggestions = []
+        for item in content.split('['):
+            if item.startswith('"'):
+                suggestion = item.split('"')[1]
+                if suggestion:
+                    search_suggestions.append(suggestion)
+        
+        # Remove the last item as it's usually not a valid suggestion
+        if search_suggestions:
+            search_suggestions.pop()
+        
+        return search_suggestions
+    except Exception as e:
+        print(f"Parsing fallback response failed: {e}")
+        return []
 
 def get_suggestions(query, proxy=None):
     if not query:
@@ -26,39 +64,22 @@ def get_suggestions(query, proxy=None):
         'Connection': 'keep-alive'
     }
 
-    try:
-        # Primary method
-        url = f"https://suggestqueries-clients6.youtube.com/complete/search?client=youtube&gs_ri=youtube&ds=yt&q={requests.utils.quote(query)}"
-        response = requests.get(url, proxies=proxies, headers=headers)
-        content = response.text
+    primary_url = f"https://suggestqueries-clients6.youtube.com/complete/search?client=youtube&gs_ri=youtube&ds=yt&q={requests.utils.quote(query)}"
+    fallback_url = f"https://clients1.google.com/complete/search?client=youtube&gs_ri=youtube&ds=yt&q={requests.utils.quote(query)}"
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_primary = executor.submit(fetch_suggestions, primary_url, proxies, headers)
+        future_fallback = executor.submit(fetch_suggestions, fallback_url, proxies, headers)
         
-        # Extract JSON data
-        start = content.index('window.google.ac.h(') + len('window.google.ac.h(')
-        end = content.rindex(')')
-        data = json.loads(content[start:end])
-        
-        return [suggestion[0] for suggestion in data[1]]
-    except Exception as e:
-        print(f"Primary method failed: {e}")
-        time.sleep(random.uniform(1, 3))  # Random delay between 1 and 3 seconds
-        try:
-            # Fallback method
-            url = f"https://clients1.google.com/complete/search?client=youtube&gs_ri=youtube&ds=yt&q={requests.utils.quote(query)}"
-            response = requests.get(url, proxies=proxies, headers=headers)
-            content = response.text
-            
-            search_suggestions = []
-            for item in content.split('['):
-                if item.startswith('"'):
-                    suggestion = item.split('"')[1]
-                    if suggestion:
-                        search_suggestions.append(suggestion)
-            
-            # Remove the last item as it's usually not a valid suggestion
-            if search_suggestions:
-                search_suggestions.pop()
-            
-            return search_suggestions
-        except Exception as e:
-            print(f"Fallback method failed: {e}")
-            return []
+        content_primary = future_primary.result()
+        content_fallback = future_fallback.result()
+
+    suggestions_primary = parse_primary_response(content_primary) if content_primary else []
+    suggestions_fallback = parse_fallback_response(content_fallback) if content_fallback else []
+
+    # Combine and deduplicate suggestions
+    combined_suggestions = list(set(suggestions_primary + suggestions_fallback))
+    return combined_suggestions
+
+# Example usage:
+# print(get_suggestions("python programming", "proxy_host:proxy_port:username:password"))
