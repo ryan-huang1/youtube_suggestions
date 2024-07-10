@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="youtube-suggestions",
-    version="0.2.1",
+    version="0.2.2",
     author="Ryan Huang",
     author_email="ryan@stdint.com",
     description="A package to get YouTube search suggestions with proxy support",
